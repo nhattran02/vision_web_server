@@ -1,28 +1,81 @@
 import ssl
 import paho.mqtt.client as mqtt
 from threading import Thread, Event
+import json
+from datetime import datetime, timedelta, timezone
 
 # AWS IoT Core settings
 AWS_ENDPOINT = "a2hnk4whzd8l7x-ats.iot.ap-southeast-1.amazonaws.com"
 PORT = 8883
 CLIENT_ID = "vision_web_aws"
-SUB_TOPIC = "/device2aws"
-PUB_TOPIC = "/aws2device"
+SUB_TOPIC = "/device2server"
+PUB_TOPIC = "/server2device"
 
 CA_CERT = "aws_package/root_cert_auth.crt"
 CLIENT_CERT = "aws_package/client.crt"
 CLIENT_KEY = "aws_package/client.key"
 
+ACK_CODE = "ACK"
+NACK_CODE = "NACK"
+
 mqtt_client = None  
 mqtt_thread = None  
 stop_event = Event() 
 
+vietnam_timezone = timezone(timedelta(hours=7))
+
+
+device_id = None
+is_device_connected = False
+
+
+def get_device_id():
+    global device_id
+    return device_id
+
+def set_device_id(id):
+    global device_id
+    device_id = id
+
+def set_device_status(status):
+    global is_device_connected
+    is_device_connected = status
+    print(f"SET Device status: {is_device_connected}")
+
+def get_device_status():
+    global is_device_connected
+    return is_device_connected
+
+
 def on_message(client, userdata, message):
-    print(f"Received message from topic {message.topic}: {message.payload.decode()}")
+    msg = message.payload.decode()
+    print(f"Received message from topic {message.topic}: {msg}")
+    try:
+        response = json.loads(msg)
+
+        # Check timestamp of the message
+        device_timestamp = response.get("timestamp")
+        if device_timestamp:
+            device_time = datetime.fromisoformat(device_timestamp)  # Parse ISO format timestamp
+            current_time = datetime.now(vietnam_timezone)
+            print(f"[HANDSHAKE] Device timestamp: {device_timestamp}, current time: {current_time}")
+
+            if (current_time - device_time).total_seconds() > 30:
+                print(f"[HANDSHAKE] Ignored old message with timestamp: {device_timestamp}")
+                return
+
+        if (response.get("device_id") == device_id) and (response.get("status") == ACK_CODE):
+            print("[HANDSHAKE] Handshake completed successfully.")
+        else:
+            print(f"[HANDSHAKE] Unexpected response: {response}")
+    except json.JSONDecodeError:
+        print(f"[HANDSHAKE] Failed to decode message: {msg}")    
+
 
 def on_connect(client, userdata, flags, rc):
     print("Connected to AWS IoT Core")
     client.subscribe(SUB_TOPIC)
+    set_device_status(True)
 
 def mqtt_loop():
     global mqtt_client
@@ -60,4 +113,17 @@ def stop_mqtt_client():
         print("Stopping MQTT client...")
         stop_event.set() 
         mqtt_thread.join() 
-        mqtt_client.disconnect() 
+        mqtt_client.disconnect()
+
+
+def publish_to_handshake_device(device_id):
+    global mqtt_client
+    if mqtt_client is not None:
+        handshake_payload = {
+            "device_id": device_id,
+            "action": "handshake", 
+            "timestamp": datetime.now(vietnam_timezone).isoformat()
+        }
+        payload_str = json.dumps(handshake_payload)
+        mqtt_client.publish(PUB_TOPIC, payload_str)
+        print(f"Published message to topic {PUB_TOPIC}: {payload_str}")

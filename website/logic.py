@@ -5,18 +5,15 @@ from . import db
 from flask_login import login_user, login_required, logout_user, current_user
 from flask_socketio import SocketIO, emit
 from website import socketio
-from mqtt_client import connect_to_aws
+from mqtt_client import connect_to_aws, publish_to_handshake_device, get_device_id, set_device_id, set_device_status, get_device_status
 
 logic = Blueprint('logic', __name__)
-is_device_connected = False
-device_id = None
 
 @logic.route('/device_connection', methods=['GET', 'POST'])
 @login_required
 def device_connection():
-    global is_device_connected
-    global device_id
-    return render_template('device_connection.html', device_id = device_id, is_device_connected = is_device_connected, user=current_user)
+    print("get_device_status", get_device_status())
+    return render_template('device_connection.html', device_id = get_device_id(), is_device_connected = get_device_status(), user=current_user)
 
 @socketio.on('connect')
 def handle_connect():
@@ -24,27 +21,27 @@ def handle_connect():
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    global is_device_connected
-    is_device_connected = False
+    print("Client disconnected")
+
 
 @socketio.on('connect_device')
 def handle_connect_device(data):
-    global is_device_connected
-    global device_id
-    device_id = data.get('device_id', None)
-    if device_id:
-        emit('update_status', {"status": f"Connecting to device: {device_id}", "class": "alert-warning"})
+    set_device_id(data.get('device_id', None))
+    if get_device_id():
+        emit('update_status', {"status": f"Connecting to device: {get_device_id()}", "class": "alert-warning"})
         connect_to_aws()
-        emit('update_status', {"status": f"Connected to device: {device_id}", "class": "alert-success"})
-        is_device_connected = True
+        publish_to_handshake_device(get_device_id())
+        emit('update_status', {"status": f"Connected to device: {get_device_id()}", "class": "alert-success"})
+        set_device_status(True)
+
     else:
         emit('update_status', {"status": "Device ID is required to connect.", "class": "alert-danger"})
 
 @socketio.on('disconnect_device')
 def handle_disconnect_device():
-    global is_device_connected
     emit('update_status', {"status": "Disconnected.", "class": "alert-danger"})
-    is_device_connected = False
+    set_device_status(False)
+
 
 
 

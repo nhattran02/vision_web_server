@@ -3,7 +3,7 @@ from .models import User
 from werkzeug.security import generate_password_hash, check_password_hash
 from . import db
 from flask_login import login_user, login_required, logout_user, current_user
-from .logic import is_device_connected
+from .logic import set_device_status, get_device_status
 
 auth = Blueprint('auth', __name__)
 
@@ -29,8 +29,7 @@ def login():
 @auth.route('/logout')
 @login_required
 def logout():
-    global is_device_connected
-    is_device_connected = False
+    set_device_status(False)
     logout_user()
     return redirect(url_for('auth.login'))
 
