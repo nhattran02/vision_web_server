@@ -1,5 +1,26 @@
-{% extends "base.html" %} {% block title %}Home{% endblock %}
+{% extends "base.html" %} 
 
-{% block content %}
-<h1>This is the home page</h1>
+{% block title %}Home{% endblock %}
+
+{% block content_code %}
+
+<div class="d-flex" id="wrapper">
+    <!-- Sidebar-->
+    <div class="border-end bg-white" id="sidebar-wrapper">
+        <div class="list-group">
+            <a class="list-group-item list-group-item-action list-group-item-light p-3 text-dark" href="{{ url_for('logic.device_connection') }}" style="width: 300px;">Device Connection</a>
+            <a class="list-group-item list-group-item-action list-group-item-light p-3 text-dark" href="#!" style="width: 300px;">Data</a>
+            <a class="list-group-item list-group-item-action list-group-item-light p-3 text-dark" href="#!" style="width: 300px;">Overview</a>
+            <a class="list-group-item list-group-item-action list-group-item-light p-3 text-dark" href="#!" style="width: 300px;">Events</a>
+            <a class="list-group-item list-group-item-action list-group-item-light p-3 text-dark" href="#!" style="width: 300px;">Profile</a>
+            <a class="list-group-item list-group-item-action list-group-item-light p-3 text-dark" href="#!" style="width: 300px;">Status</a>
+        </div>
+    </div>
+    <!-- Page content wrapper-->
+    {% block content_listgroup %} 
+
+    
+    {% endblock %}    
+</div>
+
 {% endblock %}

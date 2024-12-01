@@ -6,6 +6,5 @@ import atexit
 app = create_app()
 
 if __name__ == '__main__':
-    connect_to_aws()
     atexit.register(stop_mqtt_client)
     app.run(debug=True)

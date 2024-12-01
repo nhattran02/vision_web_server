@@ -1,0 +1,76 @@
+{% extends "home.html" %}
+
+{% block content_listgroup %}
+
+{% if user.is_authenticated %}
+<div id="page-content-wrapper" style="margin-left: 200px">
+    <div class="container-fluid">
+        <h3 class="mt-4">Device Connection</h3>
+
+        <p>Please follow the steps below to connect your device:</p>
+        <ul>
+            <li>Ensure your device is connected to a Wi-Fi network with internet access.</li>
+            <li>Verify that your device is registered and connected to the cloud platform.</li>
+            <li>Enter the device ID (found on the device) below to connect.</li>
+        </ul>
+
+        <!-- Device Connection Form -->
+        <form method="POST">
+            <div class="form-group">
+                <label for="device_id">Device ID:</label>
+                <input type="text" id="device_id" name="device_id" class="form-control"
+                       placeholder="Enter your device ID here" value="{{ device_id or '' }}" required>
+            </div>
+            <button type="submit" name="connect" class="btn btn-primary mt-2">Connect</button>
+            <button type="submit" name="disconnect" class="btn btn-danger mt-2" 
+                    {% if not device_id %}disabled{% endif %}>Disconnect</button>
+        </form>
+
+        <!-- Status Alerts -->
+        <div class="mt-4">
+            <h5>Status</h5>
+            <div id="status-container">
+                {% for alert in alerts %}
+                <div class="alert {{ alert.class }}" role="alert">
+                    {{ alert.message }}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+
+<!-- <script>
+    // Example of dynamic UI interactions (you can extend this further)
+    const statusBox = document.getElementById('status-box');
+    const disconnectBtn = document.getElementById('disconnect-btn');
+    const connectionForm = document.getElementById('device-connection-form');
+
+    connectionForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const deviceId = document.getElementById('device_id').value;
+        
+        // Simulating connection process
+        statusBox.textContent = "Connecting to device: " + deviceId;
+        statusBox.classList.remove('alert-info');
+        statusBox.classList.add('alert-warning');
+
+        setTimeout(() => {
+            statusBox.textContent = "Connected to device: " + deviceId;
+            statusBox.classList.remove('alert-warning');
+            statusBox.classList.add('alert-success');
+            disconnectBtn.disabled = false;
+        }, 2000);
+    });
+
+    disconnectBtn.addEventListener('click', function () {
+        statusBox.textContent = "Disconnected.";
+        statusBox.classList.remove('alert-success');
+        statusBox.classList.add('alert-info');
+        disconnectBtn.disabled = true;
+    });
+</script> -->
