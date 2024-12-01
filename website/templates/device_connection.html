@@ -1,12 +1,12 @@
 {% extends "home.html" %}
 
 {% block content_listgroup %}
-
-{% if user.is_authenticated %}
 <div id="page-content-wrapper" style="margin-left: 200px">
+    <!-- Page content -->
     <div class="container-fluid">
         <h3 class="mt-4">Device Connection</h3>
 
+        <!-- Instructions -->
         <p>Please follow the steps below to connect your device:</p>
         <ul>
             <li>Ensure your device is connected to a Wi-Fi network with internet access.</li>
@@ -15,31 +15,84 @@
         </ul>
 
         <!-- Device Connection Form -->
-        <form method="POST">
+        <form id="device-connection-form" method="POST">
             <div class="form-group">
-                <label for="device_id">Device ID:</label>
+                <label for="device-id">Device ID:</label>
                 <input type="text" id="device_id" name="device_id" class="form-control"
-                       placeholder="Enter your device ID here" value="{{ device_id or '' }}" required>
+                    placeholder="Enter your device ID here" required>
             </div>
             <button type="submit" name="connect" class="btn btn-primary mt-2">Connect</button>
-            <button type="submit" name="disconnect" class="btn btn-danger mt-2" 
-                    {% if not device_id %}disabled{% endif %}>Disconnect</button>
+            <button type="button" name="disconnect" id="disconnect-btn" class="btn btn-danger mt-2" disabled>Disconnect</button>
         </form>
 
-        <!-- Status Alerts -->
+        <!-- Status -->
         <div class="mt-4">
             <h5>Status</h5>
-            <div id="status-container">
-                {% for alert in alerts %}
-                <div class="alert {{ alert.class }}" role="alert">
-                    {{ alert.message }}
-                </div>
-                {% endfor %}
+            <div id="status-box" role="alert">
+                {% if status %}
+                    {{ status }}
+                {% else %}
+                    {% if is_device_connected %}
+                        <div class="alert alert-success">
+                            Connected to device: {{ device_id }}.
+                        </div>
+                    {% else %}
+                        <div class="alert alert-danger">
+                        Disconnected.
+                        </div>
+                    {% endif %}
+                {% endif %}
             </div>
+
+            {% if connection_status %}
+            <div class="alert alert-success mt-3">
+                {{ connection_status }}
+            </div>
+            {% endif %}
+
+            {% if disconnect_status %}
+            <div class="alert alert-info mt-3">
+                {{ disconnect_status }}
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
-{% endif %}
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+<script>
+    const socket = io();
+
+    const statusBox = document.getElementById('status-box');
+    const connectBtn = document.querySelector('button[name="connect"]');
+    const disconnectBtn = document.querySelector('button[name="disconnect"]');
+
+    connectBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        const deviceId = document.getElementById('device_id').value;
+        socket.emit('connect_device', { device_id: deviceId });
+    });
+
+    disconnectBtn.addEventListener('click', function (e) {
+        disconnectBtn.disabled = true;  // Disable disconnect button
+        e.preventDefault();
+        socket.emit('disconnect_device');
+    });
+
+    socket.on('update_status', function (data) {
+        // Update UI with status
+        statusBox.textContent = data.status;
+        statusBox.className = `alert ${data.class}`;
+        if (data.status.includes("Connected")) {
+            disconnectBtn.disabled = false;  // Enable disconnect button
+        }
+    });
+</script>
+
+
+
+
 
 {% endblock %}
 
