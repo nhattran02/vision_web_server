@@ -30,6 +30,7 @@ def mqtt_loop():
         mqtt_client.loop(timeout=1.0) 
 
 def connect_to_aws():
+    print("connecting to aws ...")
     global mqtt_client, mqtt_thread
 
     if mqtt_client is not None: 

@@ -5,6 +5,7 @@ from . import db
 from flask_login import login_user, login_required, logout_user, current_user
 from flask_socketio import SocketIO, emit
 from website import socketio
+from mqtt_client import connect_to_aws
 
 logic = Blueprint('logic', __name__)
 is_device_connected = False
@@ -21,6 +22,11 @@ def device_connection():
 def handle_connect():
     print("Client connected")
 
+@socketio.on('disconnect')
+def handle_disconnect():
+    global is_device_connected
+    is_device_connected = False
+
 @socketio.on('connect_device')
 def handle_connect_device(data):
     global is_device_connected
@@ -28,16 +34,17 @@ def handle_connect_device(data):
     device_id = data.get('device_id', None)
     if device_id:
         emit('update_status', {"status": f"Connecting to device: {device_id}", "class": "alert-warning"})
-        socketio.sleep(2)  # Simulate handshake
+        connect_to_aws()
         emit('update_status', {"status": f"Connected to device: {device_id}", "class": "alert-success"})
         is_device_connected = True
     else:
         emit('update_status', {"status": "Device ID is required to connect.", "class": "alert-danger"})
 
-
 @socketio.on('disconnect_device')
 def handle_disconnect_device():
+    global is_device_connected
     emit('update_status', {"status": "Disconnected.", "class": "alert-danger"})
+    is_device_connected = False
 
 
 

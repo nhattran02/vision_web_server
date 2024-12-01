@@ -23,6 +23,7 @@
             </div>
             <button type="submit" name="connect" class="btn btn-primary mt-2">Connect</button>
             <button type="button" name="disconnect" id="disconnect-btn" class="btn btn-danger mt-2" disabled>Disconnect</button>
+            <input type="hidden" id="is_device_connected" value="{{ is_device_connected }}">
         </form>
 
         <!-- Status -->
@@ -68,6 +69,17 @@
     const connectBtn = document.querySelector('button[name="connect"]');
     const disconnectBtn = document.querySelector('button[name="disconnect"]');
 
+    document.addEventListener("DOMContentLoaded", function () {
+        const isDeviceConnected = document.getElementById('is_device_connected').value === 'True';
+        if (isDeviceConnected) {
+            disconnectBtn.disabled = false;  // Enable disconnect button
+            connectBtn.disabled = true;  // Disable connect button
+        }else{
+            disconnectBtn.disabled = true;  // Disable disconnect button
+            connectBtn.disabled = false;  // Enable connect button
+        }
+    });
+
     connectBtn.addEventListener('click', function (e) {
         e.preventDefault();
         const deviceId = document.getElementById('device_id').value;
@@ -76,6 +88,7 @@
 
     disconnectBtn.addEventListener('click', function (e) {
         disconnectBtn.disabled = true;  // Disable disconnect button
+        connectBtn.disabled = false;  // Enable connect button
         e.preventDefault();
         socket.emit('disconnect_device');
     });
@@ -86,6 +99,11 @@
         statusBox.className = `alert ${data.class}`;
         if (data.status.includes("Connected")) {
             disconnectBtn.disabled = false;  // Enable disconnect button
+            connectBtn.disabled = true;  // Disable connect button
+        }
+        if (data.status.includes("Disconnected")) {
+            disconnectBtn.disabled = true;  // Disable disconnect button
+            connectBtn.disabled = false;  // Enable connect button
         }
     });
 </script>
