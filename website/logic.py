@@ -6,8 +6,11 @@ from flask_login import login_user, login_required, logout_user, current_user
 from flask_socketio import SocketIO, emit
 from website import socketio
 from mqtt_client import connect_to_aws, publish_to_handshake_device, get_device_id, set_device_id, set_device_status, get_device_status
+from mqtt_client import device_status_event
+import time
 
 logic = Blueprint('logic', __name__)
+
 
 @logic.route('/device_connection', methods=['GET', 'POST'])
 @login_required
@@ -29,11 +32,18 @@ def handle_connect_device(data):
     set_device_id(data.get('device_id', None))
     if get_device_id():
         emit('update_status', {"status": f"Connecting to device: {get_device_id()}", "class": "alert-warning"})
+        set_device_status(False)
         connect_to_aws()
         publish_to_handshake_device(get_device_id())
-        emit('update_status', {"status": f"Connected to device: {get_device_id()}", "class": "alert-success"})
-        set_device_status(True)
+        success = device_status_event.wait(timeout=5)
 
+        if success and get_device_status():
+            emit('update_status', {"status": f"Connected to device: {get_device_id()}", "class": "alert-success"})
+            set_device_status(True)
+        else:
+            emit('update_status', {"status": "Failed to connect to device within timeout.", "class": "alert-danger"})
+            set_device_status(False)
+        
     else:
         emit('update_status', {"status": "Device ID is required to connect.", "class": "alert-danger"})
 

@@ -21,6 +21,7 @@ NACK_CODE = "NACK"
 mqtt_client = None  
 mqtt_thread = None  
 stop_event = Event() 
+device_status_event = Event()
 
 vietnam_timezone = timezone(timedelta(hours=7))
 
@@ -40,6 +41,10 @@ def set_device_id(id):
 def set_device_status(status):
     global is_device_connected
     is_device_connected = status
+    if status:
+        device_status_event.set()
+    else:
+        device_status_event.clear()
     print(f"SET Device status: {is_device_connected}")
 
 def get_device_status():
@@ -60,14 +65,17 @@ def on_message(client, userdata, message):
             current_time = datetime.now(vietnam_timezone)
             print(f"[HANDSHAKE] Device timestamp: {device_timestamp}, current time: {current_time}")
 
-            if (current_time - device_time).total_seconds() > 30:
+            if (current_time - device_time).total_seconds() > 60:
                 print(f"[HANDSHAKE] Ignored old message with timestamp: {device_timestamp}")
                 return
 
-        if (response.get("device_id") == device_id) and (response.get("status") == ACK_CODE):
+        # Check if the message is a handshake response
+        if (response.get("device_id") == device_id) and (response.get("status") == ACK_CODE) and (response.get("action") == "handshake_rep"):
             print("[HANDSHAKE] Handshake completed successfully.")
+            set_device_status(True)
         else:
             print(f"[HANDSHAKE] Unexpected response: {response}")
+            set_device_status(False)
     except json.JSONDecodeError:
         print(f"[HANDSHAKE] Failed to decode message: {msg}")    
 
@@ -75,7 +83,7 @@ def on_message(client, userdata, message):
 def on_connect(client, userdata, flags, rc):
     print("Connected to AWS IoT Core")
     client.subscribe(SUB_TOPIC)
-    set_device_status(True)
+    # set_device_status(True)
 
 def mqtt_loop():
     global mqtt_client
