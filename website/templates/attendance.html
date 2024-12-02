@@ -7,13 +7,26 @@
 
     <!-- Raw Data Upload Section -->
     <div class="card p-3 mb-4">
-        {% if is_device_connected  %}
+        <!-- {% if is_device_connected  %}
             <h4>Upload Raw Data from Device {{ device_id }}</h4>
         {% else %}
             <h4>Please connect a device to upload data</h4>
+        {% endif %} -->
+
+        {% if is_device_connected %}
+            <div class="alert alert-success">
+                Upload Raw Data from Device {{ device_id }}
+            </div>
+        {% else %}
+            <div class="alert alert-danger">
+                Please connect a device to upload data
+            </div>
         {% endif %}
+        
         <div class="mb-3">
-            <button type="button" class="btn btn-primary mt-2" id="upload_raw_data" name="upload_raw_data" disabled>Upload Data</button>
+            <!-- <button type="button" class="btn btn-primary mt-2" id="upload_raw_data" name="upload_raw_data">Upload Data</button> -->
+            <button type="button" name="upload_raw_data" class="btn btn-primary mt-2">Upload Data</button>
+            <input type="hidden" id="is_device_connected" value="{{ is_device_connected }}">
         </div>
 
         <!-- Raw Data Table -->
@@ -94,17 +107,22 @@
 
 <script>
     const upLoadRawBtn = document.querySelector('button[name="upload_raw_data"]');
+    if (!upLoadRawBtn) {
+        alert('Button not found');
+    }
+
     document.addEventListener("DOMContentLoaded", function () {
         const isDeviceConnected = document.getElementById('is_device_connected').value === 'True';
         if (isDeviceConnected) {
-            upLoadRawBtn.disabled = false;  
+            upLoadRawBtn.disabled = false;
         }else{
             upLoadRawBtn.disabled = true;
         }
     });
-
-    document.getElementById('upload-data').addEventListener('click', function () {
-        const deviceId = document.getElementById('device-id').value;
+    
+    upLoadRawBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        const deviceId = document.getElementById('device_id').value;
         if (!deviceId) {
             alert('Please enter a Device ID');
             return;
@@ -130,6 +148,9 @@
         // Show raw data table
         document.getElementById('raw-data-section').style.display = 'block';
     });
+
+    
+
 
     document.getElementById('process-data').addEventListener('click', function () {
         const startDate = document.getElementById('start-date').value;

@@ -56,6 +56,7 @@ def handle_disconnect_device():
 @logic.route('/attendance', methods=['GET', 'POST'])
 @login_required
 def attendance():
+    # set_device_status(False) # For testing
     return render_template('attendance.html', is_device_connected = get_device_status(), user=current_user)
 
 
