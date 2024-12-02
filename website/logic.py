@@ -6,7 +6,7 @@ from flask_login import login_user, login_required, logout_user, current_user
 from flask_socketio import SocketIO, emit
 from website import socketio
 from mqtt_client import connect_to_aws, publish_to_handshake_device, get_device_id, set_device_id, set_device_status, get_device_status
-from mqtt_client import device_status_event
+from mqtt_client import device_status_event, stop_mqtt_client
 import time
 
 logic = Blueprint('logic', __name__)
@@ -53,7 +53,10 @@ def handle_disconnect_device():
     set_device_status(False)
 
 
-
+@logic.route('/attendance', methods=['GET', 'POST'])
+@login_required
+def attendance():
+    return render_template('attendance.html', is_device_connected = get_device_status(), user=current_user)
 
 
 

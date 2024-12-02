@@ -1,0 +1,168 @@
+{% extends "home.html" %}
+
+{% block content_listgroup %}
+
+<div class="container mt-4">
+    <h2>Attendance Data</h2>
+
+    <!-- Raw Data Upload Section -->
+    <div class="card p-3 mb-4">
+        {% if is_device_connected  %}
+            <h4>Upload Raw Data from Device {{ device_id }}</h4>
+        {% else %}
+            <h4>Please connect a device to upload data</h4>
+        {% endif %}
+        <div class="mb-3">
+            <button type="button" class="btn btn-primary mt-2" id="upload_raw_data" name="upload_raw_data" disabled>Upload Data</button>
+        </div>
+
+        <!-- Raw Data Table -->
+        <div id="raw-data-section" style="display: none;">
+            <h5>Raw Data</h5>
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Date</th>
+                        <th>Check1</th>
+                        <th>Check2</th>
+                        <th>Check3</th>
+                        <th>Check4</th>
+                        <th>Check5</th>
+                        <th>Check6</th>
+                    </tr>
+                </thead>
+                <tbody id="raw-data-body">
+                    <!-- Raw data rows go here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Processed Data Section -->
+    <div class="card p-3">
+        <h4>Processed Data</h4>
+
+        <!-- Settings for Processing -->
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="start-date" class="form-label">Start Date:</label>
+                <input type="date" id="start-date" class="form-control">
+            </div>
+            <div class="col-md-4">
+                <label for="end-date" class="form-label">End Date:</label>
+                <input type="date" id="end-date" class="form-control">
+            </div>
+            <div class="col-md-4">
+                <label for="work-hours" class="form-label">Working Hours:</label>
+                <div class="input-group">
+                    <input type="time" id="start-time" class="form-control" placeholder="Start Time">
+                    <span class="input-group-text">to</span>
+                    <input type="time" id="end-time" class="form-control" placeholder="End Time">
+                </div>
+            </div>
+        </div>
+        <button class="btn btn-success mb-3" id="process-data">Apply Rules</button>
+
+        <!-- Processed Data Table -->
+        <div id="processed-data-section" style="display: none;">
+            <h5>Processed Data</h5>
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Date</th>
+                        <th>Check1</th>
+                        <th>Check2</th>
+                        <th>Check3</th>
+                        <th>Check4</th>
+                        <th>Check5</th>
+                        <th>Check6</th>
+                        <th>Status</th>
+                        <th>Total Hours</th>
+                    </tr>
+                </thead>
+                <tbody id="processed-data-body">
+                    <!-- Processed data rows go here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const upLoadRawBtn = document.querySelector('button[name="upload_raw_data"]');
+    document.addEventListener("DOMContentLoaded", function () {
+        const isDeviceConnected = document.getElementById('is_device_connected').value === 'True';
+        if (isDeviceConnected) {
+            upLoadRawBtn.disabled = false;  
+        }else{
+            upLoadRawBtn.disabled = true;
+        }
+    });
+
+    document.getElementById('upload-data').addEventListener('click', function () {
+        const deviceId = document.getElementById('device-id').value;
+        if (!deviceId) {
+            alert('Please enter a Device ID');
+            return;
+        }
+        // Fake uploading logic - replace with your actual API call
+        alert(`Uploading raw data from Device ID: ${deviceId}`);
+
+        // Example raw data (Replace with actual data from server)
+        const rawData = [
+            { id: 1, name: 'John Doe', date: '2024-12-01', check1: '09:00', check2: '12:00', check3: '13:00', check4: '17:00', check5: '', check6: '' },
+            { id: 2, name: 'Jane Smith', date: '2024-12-01', check1: '09:15', check2: '12:05', check3: '13:10', check4: '18:00', check5: '', check6: '' },
+        ];
+
+        // Populate raw data table
+        const rawTableBody = document.getElementById('raw-data-body');
+        rawTableBody.innerHTML = '';
+        rawData.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${row.id}</td><td>${row.name}</td><td>${row.date}</td><td>${row.check1}</td><td>${row.check2}</td><td>${row.check3}</td><td>${row.check4}</td><td>${row.check5}</td><td>${row.check6}</td>`;
+            rawTableBody.appendChild(tr);
+        });
+
+        // Show raw data table
+        document.getElementById('raw-data-section').style.display = 'block';
+    });
+
+    document.getElementById('process-data').addEventListener('click', function () {
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+        const startTime = document.getElementById('start-time').value;
+        const endTime = document.getElementById('end-time').value;
+
+        if (!startDate || !endDate || !startTime || !endTime) {
+            alert('Please fill all the fields for processing!');
+            return;
+        }
+
+        // Example processed data (Replace with actual processing logic)
+        const processedData = [
+            { id: 1, name: 'John Doe', date: '2024-12-01', check1: '09:00', check2: '12:00', check3: '13:00', check4: '17:00', check5: '', check6: '', status: 'On Time', totalHours: '8:00' },
+            { id: 2, name: 'Jane Smith', date: '2024-12-01', check1: '09:15', check2: '12:05', check3: '13:10', check4: '18:00', check5: '', check6: '', status: 'Late', totalHours: '8:35' },
+        ];
+
+        // Populate processed data table
+        const processedTableBody = document.getElementById('processed-data-body');
+        processedTableBody.innerHTML = '';
+        processedData.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${row.id}</td><td>${row.name}</td><td>${row.date}</td><td>${row.check1}</td><td>${row.check2}</td><td>${row.check3}</td><td>${row.check4}</td><td>${row.check5}</td><td>${row.check6}</td><td>${row.status}</td><td>${row.totalHours}</td>`;
+            processedTableBody.appendChild(tr);
+        });
+
+        // Show processed data table
+        document.getElementById('processed-data-section').style.display = 'block';
+    });
+</script>
+
+
+
+
+{% endblock %}

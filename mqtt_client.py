@@ -28,7 +28,16 @@ vietnam_timezone = timezone(timedelta(hours=7))
 
 device_id = None
 is_device_connected = False
+is_mqtt_broker_connected = False
 
+def get_mqtt_broker_status():
+    global is_mqtt_broker_connected
+    return is_mqtt_broker_connected
+    
+def set_mqtt_broker_status(status):
+    global is_mqtt_broker_connected
+    is_mqtt_broker_connected = status
+    print(f"SET MQTT Broker status: {is_mqtt_broker_connected}")
 
 def get_device_id():
     global device_id
@@ -83,6 +92,7 @@ def on_message(client, userdata, message):
 def on_connect(client, userdata, flags, rc):
     print("Connected to AWS IoT Core")
     client.subscribe(SUB_TOPIC)
+    set_mqtt_broker_status(True)
     # set_device_status(True)
 
 def mqtt_loop():
@@ -119,9 +129,12 @@ def stop_mqtt_client():
 
     if mqtt_client is not None:
         print("Stopping MQTT client...")
+        mqtt_client.disconnect()
+        set_mqtt_broker_status(False)
         stop_event.set() 
         mqtt_thread.join() 
-        mqtt_client.disconnect()
+        mqtt_client = None
+
 
 
 def publish_to_handshake_device(device_id):
