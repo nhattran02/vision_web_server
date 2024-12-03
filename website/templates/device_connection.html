@@ -114,34 +114,3 @@
 
 {% endblock %}
 
-
-<!-- <script>
-    // Example of dynamic UI interactions (you can extend this further)
-    const statusBox = document.getElementById('status-box');
-    const disconnectBtn = document.getElementById('disconnect-btn');
-    const connectionForm = document.getElementById('device-connection-form');
-
-    connectionForm.addEventListener('submit', function (e) {
-        e.preventDefault();
-        const deviceId = document.getElementById('device_id').value;
-        
-        // Simulating connection process
-        statusBox.textContent = "Connecting to device: " + deviceId;
-        statusBox.classList.remove('alert-info');
-        statusBox.classList.add('alert-warning');
-
-        setTimeout(() => {
-            statusBox.textContent = "Connected to device: " + deviceId;
-            statusBox.classList.remove('alert-warning');
-            statusBox.classList.add('alert-success');
-            disconnectBtn.disabled = false;
-        }, 2000);
-    });
-
-    disconnectBtn.addEventListener('click', function () {
-        statusBox.textContent = "Disconnected.";
-        statusBox.classList.remove('alert-success');
-        statusBox.classList.add('alert-info');
-        disconnectBtn.disabled = true;
-    });
-</script> -->

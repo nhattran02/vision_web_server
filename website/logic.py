@@ -6,12 +6,14 @@ from flask_login import login_user, login_required, logout_user, current_user
 from flask_socketio import SocketIO, emit
 from website import socketio
 from mqtt_client import connect_to_aws, publish_to_handshake_device, get_device_id, set_device_id, set_device_status, get_device_status
-from mqtt_client import device_status_event, stop_mqtt_client
+from mqtt_client import device_status_event, stop_mqtt_client, publish_to_request_upload, upload_raw_data_event, get_sorted_data
 import time
 
 logic = Blueprint('logic', __name__)
 
 
+# Handle the device connection page
+# ================================
 @logic.route('/device_connection', methods=['GET', 'POST'])
 @login_required
 def device_connection():
@@ -25,7 +27,6 @@ def handle_connect():
 @socketio.on('disconnect')
 def handle_disconnect():
     print("Client disconnected")
-
 
 @socketio.on('connect_device')
 def handle_connect_device(data):
@@ -53,53 +54,32 @@ def handle_disconnect_device():
     set_device_status(False)
 
 
+
+# Handle the attendance page
+# ==========================
 @logic.route('/attendance', methods=['GET', 'POST'])
 @login_required
 def attendance():
-    # set_device_status(False) # For testing
+    # set_device_status(True) # For testing
     return render_template('attendance.html', is_device_connected = get_device_status(), user=current_user)
 
 
+@socketio.on('upload_raw_data')
+def handle_upload_raw_data():
+    if get_device_id() and get_device_status():
+        publish_to_request_upload(get_device_id())
+    else:
+        emit('upload_status', {"status": "Device is not connected.", "class": "text-danger"})
+
+    emit('upload_status', {"status": "Uploading ...", "class": "text-info"})
+    success = upload_raw_data_event.wait(timeout=30)
+    if not success:
+        emit('upload_status', {"status": "Upload failed.", "class": "text-danger"})
+    else:
+        upload_raw_data_event.clear()
+        emit('raw_data_received', {'data': get_sorted_data()})
+        emit('upload_status', {"status": "Upload completed", "class": "text-success"})
 
 
-
-
-
-
-
-
-
-# @logic.route('/device_connection', methods=['GET', 'POST'])
-# @login_required
-# def device_connection():
-#     device_id = None
-#     status = "Waiting for connection..."
-#     connection_status = None
-#     disconnect_status = None
-#     alerts = []
-#     alerts.append({"message": "Waiting for connection...", "class": "alert-info"})
-
-#     if request.method == 'POST':
-#         device_id = request.form.get('device_id', "").strip()
-#         if 'connect' in request.form:
-#             if device_id:
-#                 alerts = []
-#                 alerts.append({"message": f"Connecting to device: {device_id}", "class": "alert-warning"})
-#                 alerts = []
-#                 alerts.append({"message": f"Connected to device: {device_id}", "class": "alert-success"})
-#             else:
-#                 alerts = []
-#                 alerts.append({"message": "Device ID is required to connect.", "class": "alert-danger"})
-
-#         elif 'disconnect' in request.form:
-#             alerts = []
-#             alerts.append({"message": "Disconnected.", "class": "alert-info"})
-
-#     return render_template('device_connection.html', 
-#                            device_id=device_id, 
-#                            status=status, 
-#                            connection_status=connection_status, 
-#                            disconnect_status=disconnect_status, 
-#                            user = current_user, alerts=alerts)
 
 

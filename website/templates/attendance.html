@@ -27,7 +27,9 @@
             <!-- <button type="button" class="btn btn-primary mt-2" id="upload_raw_data" name="upload_raw_data">Upload Data</button> -->
             <button type="button" name="upload_raw_data" class="btn btn-primary mt-2">Upload Data</button>
             <input type="hidden" id="is_device_connected" value="{{ is_device_connected }}">
+            <p id="upload-status" class="mt-2 text-muted">Not uploaded</p>
         </div>
+        
 
         <!-- Raw Data Table -->
         <div id="raw-data-section" style="display: none;">
@@ -105,7 +107,9 @@
     </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
 <script>
+    const socket = io();
     const upLoadRawBtn = document.querySelector('button[name="upload_raw_data"]');
     if (!upLoadRawBtn) {
         alert('Button not found');
@@ -122,35 +126,68 @@
     
     upLoadRawBtn.addEventListener('click', function (e) {
         e.preventDefault();
-        const deviceId = document.getElementById('device_id').value;
-        if (!deviceId) {
-            alert('Please enter a Device ID');
+        // Fake uploading logic - replace with your actual API call
+        socket.emit('upload_raw_data');
+
+        // // Example raw data (Replace with actual data from server)
+        // const rawData = [
+        //     { id: 1, name: 'John Doe', date: '2024-12-01', check1: '09:00', check2: '12:00', check3: '13:00', check4: '17:00', check5: '', check6: '' },
+        //     { id: 2, name: 'Jane Smith', date: '2024-12-01', check1: '09:15', check2: '12:05', check3: '13:10', check4: '18:00', check5: '', check6: '' },
+        // ];
+
+        // // Populate raw data table
+        // const rawTableBody = document.getElementById('raw-data-body');
+        // rawTableBody.innerHTML = '';
+        // rawData.forEach(row => {
+        //     const tr = document.createElement('tr');
+        //     tr.innerHTML = `<td>${row.id}</td><td>${row.name}</td><td>${row.date}</td><td>${row.check1}</td><td>${row.check2}</td><td>${row.check3}</td><td>${row.check4}</td><td>${row.check5}</td><td>${row.check6}</td>`;
+        //     rawTableBody.appendChild(tr);
+        // });
+
+        // // Show raw data table
+        // document.getElementById('raw-data-section').style.display = 'block';
+    });
+
+
+    socket.on('upload_status', function (data) {
+        // Update UI with status
+        const uploadStatus = document.getElementById('upload-status');
+        uploadStatus.textContent = data.status;
+        uploadStatus.className = `mt-2 ${data.class}`;
+    });
+
+    socket.on('raw_data_received', function (data) {
+        console.log(typeof data, Array.isArray(data), data);
+
+        if (data && data.data && Array.isArray(data.data)) {
+            data = data.data;
+        } else {
+            console.error('Invalid data format:', data);
             return;
         }
-        // Fake uploading logic - replace with your actual API call
-        alert(`Uploading raw data from Device ID: ${deviceId}`);
-
-        // Example raw data (Replace with actual data from server)
-        const rawData = [
-            { id: 1, name: 'John Doe', date: '2024-12-01', check1: '09:00', check2: '12:00', check3: '13:00', check4: '17:00', check5: '', check6: '' },
-            { id: 2, name: 'Jane Smith', date: '2024-12-01', check1: '09:15', check2: '12:05', check3: '13:10', check4: '18:00', check5: '', check6: '' },
-        ];
 
         // Populate raw data table
         const rawTableBody = document.getElementById('raw-data-body');
         rawTableBody.innerHTML = '';
-        rawData.forEach(row => {
+        data.forEach(row => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${row.id}</td><td>${row.name}</td><td>${row.date}</td><td>${row.check1}</td><td>${row.check2}</td><td>${row.check3}</td><td>${row.check4}</td><td>${row.check5}</td><td>${row.check6}</td>`;
+            tr.innerHTML = `
+                <td>${row['id']}</td>
+                <td>${row['name']}</td>
+                <td>${row['date']}</td>
+                <td>${row['check1']}</td>
+                <td>${row['check2']}</td>
+                <td>${row['check3']}</td>
+                <td>${row['check4']}</td>
+                <td>${row['check5']}</td>
+                <td>${row['check6']}</td>
+            `;
             rawTableBody.appendChild(tr);
         });
 
         // Show raw data table
         document.getElementById('raw-data-section').style.display = 'block';
     });
-
-    
-
 
     document.getElementById('process-data').addEventListener('click', function () {
         const startDate = document.getElementById('start-date').value;
@@ -181,6 +218,8 @@
         // Show processed data table
         document.getElementById('processed-data-section').style.display = 'block';
     });
+
+
 </script>
 
 
