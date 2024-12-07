@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for
-from .models import User
+from .models import Attendance
 from werkzeug.security import generate_password_hash, check_password_hash
 from . import db
 from flask_login import login_user, login_required, logout_user, current_user
@@ -64,6 +64,46 @@ def attendance():
     return render_template('attendance.html', is_device_connected = get_device_status(), user=current_user)
 
 
+def save_raw_data_to_attendance():
+    db.session.query(Attendance).filter_by(user_id=current_user.id).delete()
+    db.session.commit()
+
+    data = get_sorted_data()
+
+    for d in data:
+        attendance = Attendance(
+            name=d['name'], 
+            date=d['date'], 
+            check1=d['check1'], 
+            check2=d['check2'], 
+            check3=d['check3'], 
+            check4=d['check4'], 
+            check5=d['check5'], 
+            check6=d['check6'], 
+            user_id=current_user.id)
+        db.session.add(attendance)
+    db.session.commit()
+
+def get_data_from_attendance_db():
+    attendances = Attendance.query.filter_by(user_id=current_user.id).all()
+
+    data = []
+    for attendance in attendances:
+        data.append({
+            'id': attendance.id,
+            'name': attendance.name,
+            'date': attendance.date,  
+            'check1': attendance.check1,
+            'check2': attendance.check2,
+            'check3': attendance.check3,
+            'check4': attendance.check4,
+            'check5': attendance.check5,
+            'check6': attendance.check6,
+        })
+
+    return data
+
+
 @socketio.on('upload_raw_data')
 def handle_upload_raw_data():
     if get_device_id() and get_device_status():
@@ -77,9 +117,18 @@ def handle_upload_raw_data():
         emit('upload_status', {"status": "Upload failed.", "class": "text-danger"})
     else:
         upload_raw_data_event.clear()
+        save_raw_data_to_attendance()
         emit('raw_data_received', {'data': get_sorted_data()})
         emit('upload_status', {"status": "Upload completed", "class": "text-success"})
 
+@socketio.on('reload_page')
+def handle_reload_page():
+    if get_data_from_attendance_db() and get_device_status():
+        emit('raw_data_received', {'data': get_data_from_attendance_db()})
 
-
-
+# Handle the import data page
+# ==========================
+@logic.route('/import_data', methods=['GET', 'POST'])
+@login_required
+def import_data():
+    return render_template('import_data.html', user=current_user)

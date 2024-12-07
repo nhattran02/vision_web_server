@@ -1,0 +1,111 @@
+{% extends "home.html" %}
+
+{% block content_listgroup %}
+<div class="container mt-4">
+    <h2 class="text-center">Import Data to Device</h2>
+    
+    <!-- Section for Importing from CSV -->
+    <div class="mb-4">
+        <h4>Import from CSV File</h4>
+        <form method="POST" enctype="multipart/form-data">
+            <input type="file" name="file" accept=".csv" class="form-control mb-2" required>
+            <button type="submit" class="btn btn-primary">Upload</button>
+        </form>
+    </div>
+
+    <!-- Section for Manual Data Entry -->
+    <div>
+        <h4>Manual Data Entry</h4>
+        <div class="table-responsive">
+            <table class="table table-bordered" id="dataTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Employee ID</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td><input type="text" class="form-control" name="name" placeholder="Name"></td>
+                        <td><input type="text" class="form-control" name="employee_id" placeholder="Employee ID"></td>
+                        <td>
+                            <select class="form-control" name="role">
+                                <option value="1">Admin</option>
+                                <option value="0">User</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-success btn-sm add-row">+</button>
+                            <button type="button" class="btn btn-danger btn-sm delete-row">-</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <button class="btn btn-primary mt-3" id="saveTable">Send to Device</button>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const table = document.querySelector('#dataTable tbody');
+        
+        // Add new row
+        document.querySelector('.add-row').addEventListener('click', function() {
+            const newRow = `
+                <tr>
+                    <td></td>
+                    <td><input type="text" class="form-control" name="name" placeholder="Name"></td>
+                    <td><input type="text" class="form-control" name="employee_id" placeholder="Employee ID"></td>
+                    <td>
+                        <select class="form-control" name="role">
+                            <option value="1">Admin</option>
+                            <option value="0">User</option>
+                        </select>
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-success btn-sm add-row">+</button>
+                        <button type="button" class="btn btn-danger btn-sm delete-row">-</button>
+                    </td>
+                </tr>
+            `;
+            table.insertAdjacentHTML('beforeend', newRow);
+            updateIDs();
+        });
+
+        // Delete row
+        table.addEventListener('click', function(event) {
+            if (event.target.classList.contains('delete-row')) {
+                event.target.closest('tr').remove();
+                updateIDs();
+            }
+        });
+
+        // Update IDs for rows
+        function updateIDs() {
+            const rows = table.querySelectorAll('tr');
+            rows.forEach((row, index) => {
+                const idCell = row.querySelector('td:first-child');
+                idCell.textContent = index + 1;
+            });
+        }
+        
+        // Save data
+        document.querySelector('#saveTable').addEventListener('click', function() {
+            const rows = table.querySelectorAll('tr');
+            const data = Array.from(rows).map(row => ({
+                id: row.querySelector('td:first-child').textContent.trim(),
+                name: row.querySelector('input[name="name"]').value.trim(),
+                employee_id: row.querySelector('input[name="employee_id"]').value.trim(),
+                role: row.querySelector('select[name="role"]').value.trim(),
+            }));
+            console.log('Data to Save:', data);
+            // TODO: Add AJAX to send data to backend
+        });
+    });
+</script>
+{% endblock %}

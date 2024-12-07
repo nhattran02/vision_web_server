@@ -16,3 +16,18 @@ class User(db.Model, UserMixin):
     password = db.Column(db.String(150))
     first_name = db.Column(db.String(150))
     notes = db.relationship('Note')
+
+class Attendance(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False)
+    date = db.Column(db.String(12), nullable=False)
+    check1 = db.Column(db.String(10))
+    check2 = db.Column(db.String(10))
+    check3 = db.Column(db.String(10))
+    check4 = db.Column(db.String(10))
+    check5 = db.Column(db.String(10))
+    check6 = db.Column(db.String(10))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    created_at = db.Column(db.DateTime(timezone=True), default=func.now())
+
+
