@@ -57,58 +57,61 @@
 
     <!-- Processed Data Section -->
     <div class="card p-3">
-        <h4>Processed Data</h4>
+        <h4>Process Data</h4>
 
         <!-- Settings for Processing -->
         <div class="row mb-3">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label for="start-date" class="form-label">Start Date:</label>
                 <input type="date" id="start-date" class="form-control">
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label for="end-date" class="form-label">End Date:</label>
                 <input type="date" id="end-date" class="form-control">
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <label for="work-hours" class="form-label">Working Hours:</label>
-                <div class="input-group">
-                    <input type="time" id="start-time" class="form-control" placeholder="Start Time">
+                <div class="input-group mb-2">
+                    <span class="input-group-text" style="width: 120px; text-align: right;">Morning: </span>
+                    <input type="time" id="morning-start" class="form-control" placeholder="Morning Start Time">
                     <span class="input-group-text">to</span>
-                    <input type="time" id="end-time" class="form-control" placeholder="End Time">
+                    <input type="time" id="morning-end" class="form-control" placeholder="Morning End Time">
+                </div>
+                <div class="input-group">
+                    <span class="input-group-text" style="width: 120px; text-align: right;">Afternoon:</span>
+                    <input type="time" id="afternoon-start" class="form-control" placeholder="Afternoon Start Time">
+                    <span class="input-group-text">to</span>
+                    <input type="time" id="afternoon-end" class="form-control" placeholder="Afternoon End Time">
                 </div>
             </div>
+            
         </div>
         <button class="btn btn-success mb-3" id="process-data">Apply Rules</button>
 
         <!-- Processed Data Table -->
         <div id="processed-data-section" style="display: none;">
-            <h5>Processed Data</h5>
-            <table class="table table-bordered table-striped">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Name</th>
-                        <th>Date</th>
-                        <th>Check1</th>
-                        <th>Check2</th>
-                        <th>Check3</th>
-                        <th>Check4</th>
-                        <th>Check5</th>
-                        <th>Check6</th>
-                        <th>Status</th>
-                        <th>Total Hours</th>
-                    </tr>
-                </thead>
-                <tbody id="processed-data-body">
-                    <!-- Processed data rows go here -->
-                </tbody>
-            </table>
+            <h5>Processed Data Table</h5>
+            <div style="overflow-x: auto; overflow-y: auto; max-height: 2000px; max-width: 100%; border: 1px solid #ccc;">
+                <table class="table table-bordered table-striped" style="min-width: 800px; white-space: nowrap;"> <!-- Min-width to ensure horizontal scroll -->
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="processed-data-body">
+                        <!-- Processed data rows go here -->
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
 <script>
+    let rawData = [];
     const socket = io();
     const upLoadRawBtn = document.querySelector('button[name="upload_raw_data"]');
     if (!upLoadRawBtn) {
@@ -123,6 +126,12 @@
         }else{
             upLoadRawBtn.disabled = true;
         }
+        document.getElementById('start-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('end-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('morning-start').value = '08:00';
+        document.getElementById('morning-end').value = '12:00'; 
+        document.getElementById('afternoon-start').value = '13:00';
+        document.getElementById('afternoon-end').value = '17:00';        
     });
     
     upLoadRawBtn.addEventListener('click', function (e) {
@@ -142,6 +151,7 @@
         console.log(typeof data, Array.isArray(data), data);
 
         if (data && data.data && Array.isArray(data.data)) {
+            rawData = data.data;
             data = data.data;
         } else {
             console.error('Invalid data format:', data);
@@ -171,29 +181,116 @@
         document.getElementById('raw-data-section').style.display = 'block';
     });
 
+    function processData(data) {
+        const weekdays = ["Sun.", "Mon.", "Tue.", "Wed.", "Thu.", "Fri.", "Sat."];
+
+        const processedDataBody = document.getElementById('processed-data-body');
+        const tableHeader = document.querySelector("#processed-data-section thead tr");
+        processedDataBody.innerHTML = ""; // Clear existing data
+
+        // Add "Day" column to table header
+        if (!tableHeader.querySelector('th[data-column="day"]')) {
+            const newHeader = document.createElement('th');
+            newHeader.textContent = "Day";
+            newHeader.setAttribute("data-column", "day");
+            tableHeader.insertBefore(newHeader, tableHeader.children[3]);
+        }
+
+        if (!tableHeader.querySelector('th[data-column="first-in"]')) {
+            const firstInHeader = document.createElement('th');
+            firstInHeader.textContent = "First In";
+            firstInHeader.setAttribute("data-column", "first-in");
+            tableHeader.insertBefore(firstInHeader, tableHeader.children[4]);
+        }
+
+        if (!tableHeader.querySelector('th[data-column="last-out"]')) {
+            const lastOutHeader = document.createElement('th');
+            lastOutHeader.textContent = "Last Out";
+            lastOutHeader.setAttribute("data-column", "last-out");
+            tableHeader.insertBefore(lastOutHeader, tableHeader.children[5]);
+        }        
+
+        data.forEach(row => {
+            // Calculate day of the week
+            const [_day, month, year] = row.date.split('/').map(Number);
+            const dateObj = new Date(year, month - 1, _day);          
+            const day = isNaN(dateObj.getDay()) ? "Invalid" : weekdays[dateObj.getDay()];
+            row.day = day; // IMPORTANT
+
+            // Calculate first in and last out
+            const checks = [row.check1, row.check2, row.check3, row.check4, row.check5, row.check6];
+            console.log("Checks:", checks);
+            const firstIn = checks.length > 0 ? checks[0] : "N/A";
+            let lastOut = "N/A";
+            for (let i = checks.length - 1; i >= 1; i--) { 
+                if (checks[i] !== "") {
+                    lastOut = checks[i];
+                    break; 
+                }
+            }
+            row.firstIn = firstIn; // IMPORTANT
+            row.lastOut = lastOut; // IMPORTANT
+            console.log("First In:", firstIn, "Last Out:", lastOut);
+
+
+            // Default 
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `
+                <td>${row.id}</td>
+                <td>${row.name}</td>
+                <td>${row.date}</td>
+            `;
+
+            // Add "Day" cell to row
+            const dayCell = document.createElement('td');
+            dayCell.textContent = day;
+            newRow.insertBefore(dayCell, newRow.children[3]);
+
+            // Add "First In" cell to row
+            const firstInCell = document.createElement('td');
+            firstInCell.textContent = "firstIn";
+            newRow.insertBefore(firstInCell, newRow.children[4]);
+            
+            // Add "Last Out" cell to row
+            const lastOutCell = document.createElement('td');
+            lastOutCell.textContent = "lastOut";
+            newRow.insertBefore(lastOutCell, newRow.children[5]);
+
+            processedDataBody.appendChild(newRow);
+        });
+    }
+
+
     document.getElementById('process-data').addEventListener('click', function () {
         const startDate = document.getElementById('start-date').value;
         const endDate = document.getElementById('end-date').value;
-        const startTime = document.getElementById('start-time').value;
-        const endTime = document.getElementById('end-time').value;
+        const startMorning = document.getElementById('morning-start').value;
+        const endMorning = document.getElementById('morning-end').value;
+        const startAfternoon = document.getElementById('afternoon-start').value;
+        const endAfternoon = document.getElementById('afternoon-end').value;
 
-        if (!startDate || !endDate || !startTime || !endTime) {
+        if (!startDate || !endDate || !startMorning || !endMorning || !startAfternoon || !endAfternoon) {
             alert('Please fill all the fields for processing!');
             return;
         }
 
         // Example processed data (Replace with actual processing logic)
-        const processedData = [
-            { id: 2, name: 'Tran Quoc Vinh Quang', date: '22/11/2024', check1: '09:00', check2: '09:00', check3: '09:00', check4: '09:00', check5: '09:00', check6: '', status: 'On Time', totalHours: '8:00' },
-            { id: 2, name: 'Tran Minh Nhat', date: '23/11/2024', check1: '09:15', check2: '12:05', check3: '13:10', check4: '18:00', check5: '', check6: '', status: 'Late', totalHours: '8:35' },
-        ];
+        // const processedData = [
+        //     { id: 2, name: 'Tran Quoc Vinh Quang', date: '22/11/2024', check1: '09:00', check2: '09:00', check3: '09:00', check4: '09:00', check5: '09:00', check6: '', status: 'On Time', totalHours: '8:00' },
+        //     { id: 2, name: 'Tran Minh Nhat', date: '23/11/2024', check1: '09:15', check2: '12:05', check3: '13:10', check4: '18:00', check5: '', check6: '', status: 'Late', totalHours: '8:35' },
+        // ];
+
+        const processedData = rawData.map(row => {
+            return { ...row};
+        });
+        processData(processedData);
 
         // Populate processed data table
         const processedTableBody = document.getElementById('processed-data-body');
         processedTableBody.innerHTML = '';
         processedData.forEach(row => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${row.id}</td><td>${row.name}</td><td>${row.date}</td><td>${row.check1}</td><td>${row.check2}</td><td>${row.check3}</td><td>${row.check4}</td><td>${row.check5}</td><td>${row.check6}</td><td>${row.status}</td><td>${row.totalHours}</td>`;
+            tr.innerHTML = `<td>${row.id}</td><td>${row.name}</td><td>${row.date}</td><td>${row.day}</td><td>${row.firstIn}</td><td>${row.lastOut}</td>`;
             processedTableBody.appendChild(tr);
         });
 

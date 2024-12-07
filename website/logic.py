@@ -54,7 +54,6 @@ def handle_disconnect_device():
     set_device_status(False)
 
 
-
 # Handle the attendance page
 # ==========================
 @logic.route('/attendance', methods=['GET', 'POST'])
