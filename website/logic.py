@@ -127,7 +127,7 @@ def handle_upload_raw_data():
 
 @socketio.on('reload_page')
 def handle_reload_page():
-    set_device_status(True) # Only for testing
+    # set_device_status(True) # Only for testing
     if get_data_from_attendance_db() and get_device_status():
         emit('raw_data_received', {'data': get_data_from_attendance_db()})
 

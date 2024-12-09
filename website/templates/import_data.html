@@ -51,30 +51,94 @@
 </div>
 
 <script>
+    let csvData = [];
     document.addEventListener('DOMContentLoaded', function() {
         const table = document.querySelector('#dataTable tbody');
+
+        // Upload button handler
+        document.querySelector('form').addEventListener('submit', function (event) {
+            event.preventDefault(); 
+            const fileInput = document.querySelector('input[name="file"]');
+            const file = fileInput.files[0];
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const csvContent = e.target.result;
+                    csvData = csvToJson(csvContent);
+                    console.log('Parsed Data:', csvData);
+                    populateTable(csvData);
+                };
+                reader.readAsText(file);
+            } else {
+                alert('Please select a CSV file.');
+            }
+        });
+
+        // convert CSV to JSON
+        function csvToJson(csv) {
+            const rows = csv.split('\n').map(row => row.trim()).filter(row => row.length);
+            const headers = rows[0].split(',').map(header => header.trim());
+            return rows.slice(1).map(row => {
+                const values = row.split(',').map(value => value.trim());
+                return headers.reduce((acc, header, index) => {
+                    acc[header] = values[index] || '';
+                    return acc;
+                }, {});
+            });
+        }        
+
         
-        // Add new row
-        document.querySelector('.add-row').addEventListener('click', function() {
-            const newRow = `
-                <tr>
-                    <td></td>
-                    <td><input type="text" class="form-control" name="name" placeholder="Name"></td>
-                    <td><input type="text" class="form-control" name="employee_id" placeholder="Employee ID"></td>
-                    <td>
-                        <select class="form-control" name="role">
-                            <option value="1">Admin</option>
-                            <option value="0">User</option>
-                        </select>
-                    </td>
-                    <td>
-                        <button type="button" class="btn btn-success btn-sm add-row">+</button>
-                        <button type="button" class="btn btn-danger btn-sm delete-row">-</button>
-                    </td>
-                </tr>
-            `;
-            table.insertAdjacentHTML('beforeend', newRow);
-            updateIDs();
+        function populateTable(data) {
+            const table = document.querySelector('#dataTable tbody');
+            table.innerHTML = '';
+            data.forEach((item, index) => {
+                console.log(item);
+                const newRow = `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td><input type="text" class="form-control" name="name" value="${item.NAME || ''}" placeholder="Name"></td>
+                        <td><input type="text" class="form-control" name="employee_id" value="${item.EMPLOYEEID || ''}" placeholder="Employee ID"></td>
+                        <td>
+                            <select class="form-control" name="role">
+                                <option value="1" ${item.ROLE === '1' ? 'selected' : ''}>Admin</option>
+                                <option value="0" ${item.ROLE === '0' ? 'selected' : ''}>User</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-success btn-sm add-row">+</button>
+                            <button type="button" class="btn btn-danger btn-sm delete-row">-</button>
+                        </td>
+                    </tr>
+                `;
+                table.insertAdjacentHTML('beforeend', newRow);
+            });
+        }
+
+
+        // Add row
+        table.addEventListener('click', function(event) {
+            if (event.target.classList.contains('add-row')) {
+                const newRow = `
+                    <tr>
+                        <td></td>
+                        <td><input type="text" class="form-control" name="name" placeholder="Name"></td>
+                        <td><input type="text" class="form-control" name="employee_id" placeholder="Employee ID"></td>
+                        <td>
+                            <select class="form-control" name="role">
+                                <option value="1">Admin</option>
+                                <option value="0">User</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-success btn-sm add-row">+</button>
+                            <button type="button" class="btn btn-danger btn-sm delete-row">-</button>
+                        </td>
+                    </tr>
+                `;
+                table.insertAdjacentHTML('beforeend', newRow);
+                updateIDs();
+            }
         });
 
         // Delete row
