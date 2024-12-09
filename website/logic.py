@@ -64,13 +64,15 @@ def attendance():
 
 
 def save_raw_data_to_attendance():
-    db.session.query(Attendance).filter_by(user_id=current_user.id).delete()
+    # db.session.query(Attendance).filter_by(user_id=current_user.id).delete()
+    db.session.query(Attendance).delete()
     db.session.commit()
 
     data = get_sorted_data()
 
     for d in data:
         attendance = Attendance(
+            id=d['id'],
             name=d['name'], 
             date=d['date'], 
             check1=d['check1'], 
@@ -82,6 +84,7 @@ def save_raw_data_to_attendance():
             user_id=current_user.id)
         db.session.add(attendance)
     db.session.commit()
+
 
 def get_data_from_attendance_db():
     attendances = Attendance.query.filter_by(user_id=current_user.id).all()
@@ -120,10 +123,15 @@ def handle_upload_raw_data():
         emit('raw_data_received', {'data': get_sorted_data()})
         emit('upload_status', {"status": "Upload completed", "class": "text-success"})
 
+
+
 @socketio.on('reload_page')
 def handle_reload_page():
+    set_device_status(True) # Only for testing
     if get_data_from_attendance_db() and get_device_status():
         emit('raw_data_received', {'data': get_data_from_attendance_db()})
+
+
 
 # Handle the import data page
 # ==========================
@@ -131,3 +139,5 @@ def handle_reload_page():
 @login_required
 def import_data():
     return render_template('import_data.html', user=current_user)
+
+

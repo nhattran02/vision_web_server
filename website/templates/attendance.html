@@ -86,12 +86,51 @@
             </div>
             
         </div>
-        <button class="btn btn-success mb-3" id="process-data">Apply Rules</button>
+
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <label for="day-off" class="form-label">Select Day Off:</label>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="monday" value="Monday">
+                    <label class="form-check-label" for="monday">Monday</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="tuesday" value="Tuesday">
+                    <label class="form-check-label" for="tuesday">Tuesday</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="wednesday" value="Wednesday">
+                    <label class="form-check-label" for="wednesday">Wednesday</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="thursday" value="Thursday">
+                    <label class="form-check-label" for="thursday">Thursday</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="friday" value="Friday">
+                    <label class="form-check-label" for="friday">Friday</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="saturday" value="Saturday" checked>
+                    <label class="form-check-label" for="saturday">Saturday</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="sunday" value="Sunday" checked>
+                    <label class="form-check-label" for="sunday">Sunday</label>
+                </div>
+                <div class="mb-3">
+                    <label for="custom-day" class="form-label">Custom Day Off:</label>
+                    <input type="date" id="custom-day" class="form-control">
+                </div>
+            </div>
+        </div>
+
+        <button class="btn btn-success mb-3" id="process-data" style="width: 205px;">Apply Rules</button>
 
         <!-- Processed Data Table -->
         <div id="processed-data-section" style="display: none;">
             <h5>Processed Data Table</h5>
-            <div style="overflow-x: auto; overflow-y: auto; max-height: 2000px; max-width: 100%; border: 1px solid #ccc;">
+            <div style="overflow-x: auto; overflow-y: auto; max-height: 550px; max-width: 100%; border: 1px solid #ccc;">
                 <table class="table table-bordered table-striped" style="min-width: 800px; white-space: nowrap;"> <!-- Min-width to ensure horizontal scroll -->
                     <thead>
                         <tr>
@@ -106,12 +145,18 @@
                 </table>
             </div>
         </div>
+            <button type="submit" name="connect" id="export-excel" class="btn btn-primary mt-2" style="width: 205px;">Export Excel Report</button>
+
     </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
 <script>
     let rawData = [];
+    let processedData = [];
+    let uniqueDatesGlobal = [];
+    let filteredData;
     const socket = io();
     const upLoadRawBtn = document.querySelector('button[name="upload_raw_data"]');
     if (!upLoadRawBtn) {
@@ -180,8 +225,80 @@
         // Show raw data table
         document.getElementById('raw-data-section').style.display = 'block';
     });
+    
+    document.getElementById('export-excel').addEventListener('click', function() {
+        console.log("Exporting data to excel");
+        const employeeSummary = processedData.reduce((summary, row) => {
+            const key = row.id + '_' + row.name;
+            if (!summary[key]) {
+                summary[key] = {
+                    id: row.id,
+                    name: row.name,
+                    totalWorkingHours: 0,
+                    otHours: 0,
+                    count: 0
+                };
+            }
+            summary[key].totalWorkingHours += parseFloat(row.totalWorkingHours || 0);
+            summary[key].otHours += parseFloat(row.otHours || 0);
+            summary[key].count++;
+            return summary;
+        }, {});
 
-    function processData(data) {
+
+        const excelData = Object.values(employeeSummary).map(emp => ({
+            'User ID': emp.id,
+            'Name': emp.name,
+            'Total Working Hours': emp.totalWorkingHours.toFixed(2),
+            'OT Hours': emp.otHours.toFixed(2),
+            '':''
+        }));
+
+        excelData.forEach(emp => {
+            uniqueDatesGlobal.forEach(date => {
+                const record = processedData.find(row => row.id === emp['User ID'] && row.date === date);
+                emp[date] = record ? parseFloat(record.totalWorkingHours || 0).toFixed(2) : '0.00';
+            });
+        });
+                    
+        const ws = XLSX.utils.json_to_sheet(excelData, { origin: "A3" }); 
+
+        const title = [['ATTENDANCE REPORT']];
+        XLSX.utils.sheet_add_aoa(ws, title, { origin: "A1" }); 
+
+        if (!ws['!merges']) ws['!merges'] = [];
+        ws['!merges'].push({
+            s: { r: 0, c: 0 }, // Bắt đầu từ A1
+            e: { r: 0, c: Object.keys(excelData[0]).length - 1 }
+        });
+
+        const maxWidths = Object.values(employeeSummary).reduce((widths, emp) => {
+            return [
+                Math.max(widths[0], emp.id.length),
+                Math.max(widths[1], emp.name.length),
+                Math.max(widths[2], emp.totalWorkingHours.toFixed(2).length),
+                Math.max(widths[3], emp.otHours.toFixed(2).length), 
+            ];
+        }, [10, 10, 20, 10]);
+
+        ws['!cols'] = [
+            { wch: maxWidths[0] + 2 }, 
+            { wch: maxWidths[1] + 2 },
+            { wch: maxWidths[2] + 2 },
+            { wch: maxWidths[3] + 2 }
+        ];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Employee Summary');
+        XLSX.writeFile(wb, 'attendance_report.xlsx');
+
+    });
+
+    function normalizeDate(date) {
+        return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    }
+
+    function processData(data, startDate, endDate, startMorning, endMorning, startAfternoon, endAfternoon, dayOff) {
         const weekdays = ["Sun.", "Mon.", "Tue.", "Wed.", "Thu.", "Fri.", "Sat."];
 
         const processedDataBody = document.getElementById('processed-data-body');
@@ -196,6 +313,7 @@
             tableHeader.insertBefore(newHeader, tableHeader.children[3]);
         }
 
+        // Add First In column to table header
         if (!tableHeader.querySelector('th[data-column="first-in"]')) {
             const firstInHeader = document.createElement('th');
             firstInHeader.textContent = "First In";
@@ -203,6 +321,7 @@
             tableHeader.insertBefore(firstInHeader, tableHeader.children[4]);
         }
 
+        // Add Last Out column to table header
         if (!tableHeader.querySelector('th[data-column="last-out"]')) {
             const lastOutHeader = document.createElement('th');
             lastOutHeader.textContent = "Last Out";
@@ -210,16 +329,86 @@
             tableHeader.insertBefore(lastOutHeader, tableHeader.children[5]);
         }        
 
-        data.forEach(row => {
+        // Add "AM Working hours" column to table header
+        if (!tableHeader.querySelector('th[data-column="am-working-hours"]')) {
+            const amWorkingHoursHeader = document.createElement('th');
+            amWorkingHoursHeader.textContent = "AM Working Hrs";
+            amWorkingHoursHeader.setAttribute("data-column", "am-working-hours");
+            tableHeader.insertBefore(amWorkingHoursHeader, tableHeader.children[6]);
+        } 
+
+        // Add "PM Working hours" column to table header
+        if (!tableHeader.querySelector('th[data-column="pm-working-hours"]')) {
+            const pmWorkingHoursHeader = document.createElement('th');
+            pmWorkingHoursHeader.textContent = "AM Working Hrs";
+            pmWorkingHoursHeader.setAttribute("data-column", "pm-working-hours");
+            tableHeader.insertBefore(pmWorkingHoursHeader, tableHeader.children[7]);
+        }
+
+        // Add "Total Working hours" column to table header
+        if (!tableHeader.querySelector('th[data-column="total-working-hours"]')) {
+            const totalWorkingHoursHeader = document.createElement('th');
+            totalWorkingHoursHeader.textContent = "Total Working Hrs";
+            totalWorkingHoursHeader.setAttribute("data-column", "total-working-hours");
+            tableHeader.insertBefore(totalWorkingHoursHeader, tableHeader.children[8]);
+        }
+
+        // Add "OT hours" column to table header
+        if (!tableHeader.querySelector('th[data-column="ot-hours"]')) {
+            const otHoursHeader = document.createElement('th');
+            otHoursHeader.textContent = "OT Hours";
+            otHoursHeader.setAttribute("data-column", "ot-hours");
+            tableHeader.insertBefore(otHoursHeader, tableHeader.children[9]);
+        }
+
+        // Add "Late Arrival" column to table header
+        if (!tableHeader.querySelector('th[data-column="late-arrival"]')) {
+            const lateArrivalHeader = document.createElement('th');
+            lateArrivalHeader.textContent = "Late Arrival";
+            lateArrivalHeader.setAttribute("data-column", "late-arrival");
+            tableHeader.insertBefore(lateArrivalHeader, tableHeader.children[10]);
+        }
+
+        // Add "Early Departure" column to table header
+        if (!tableHeader.querySelector('th[data-column="early-departure"]')) {
+            const earlyDepartureHeader = document.createElement('th');
+            earlyDepartureHeader.textContent = "Leaving Early";
+            earlyDepartureHeader.setAttribute("data-column", "early-departure");
+            tableHeader.insertBefore(earlyDepartureHeader, tableHeader.children[11]);
+        }
+
+        processedDataBody.innerHTML = ""; // Clear existing data
+
+        const startDateObj = new Date(startDate);
+        const endDateObj = new Date(endDate);
+
+        // Filter data based on date range
+        filteredData = data.filter(row => {
+            const [day1, month, year] = row.date.split('/').map(Number);
+            const rowDate = new Date(year, month - 1, day1);
+
+            const normalizedRowDate = normalizeDate(rowDate);
+            const normalizedStartDate = normalizeDate(startDateObj);
+            const normalizedEndDate = normalizeDate(endDateObj);
+
+            return normalizedRowDate >= normalizedStartDate && normalizedRowDate <= normalizedEndDate;
+        });
+
+        console.log("filteredData", filteredData);
+
+        filteredData.forEach(row => {
+            console.log("row", row);
             // Calculate day of the week
             const [_day, month, year] = row.date.split('/').map(Number);
-            const dateObj = new Date(year, month - 1, _day);          
+            const dateObj = new Date(year, month - 1, _day);
+            if(!uniqueDatesGlobal.includes(row.date)){
+                uniqueDatesGlobal.push(row.date);
+            }
             const day = isNaN(dateObj.getDay()) ? "Invalid" : weekdays[dateObj.getDay()];
             row.day = day; // IMPORTANT
 
             // Calculate first in and last out
             const checks = [row.check1, row.check2, row.check3, row.check4, row.check5, row.check6];
-            console.log("Checks:", checks);
             const firstIn = checks.length > 0 ? checks[0] : "N/A";
             let lastOut = "N/A";
             for (let i = checks.length - 1; i >= 1; i--) { 
@@ -230,8 +419,69 @@
             }
             row.firstIn = firstIn; // IMPORTANT
             row.lastOut = lastOut; // IMPORTANT
-            console.log("First In:", firstIn, "Last Out:", lastOut);
 
+            // Calculate AM and PM working hours
+            const [amStart, amEnd] = [startMorning, endMorning].map(time => new Date(`1970-01-01T${time}`));
+            const [pmStart, pmEnd] = [startAfternoon, endAfternoon].map(time => new Date(`1970-01-01T${time}`));
+            const [firstInTime, lastOutTime] = [firstIn, lastOut].map(time => new Date(`1970-01-01T${time}`));
+            if (!dayOff.includes(row.day)) {
+                if ((firstInTime instanceof Date && isNaN(firstInTime)) || (lastOutTime instanceof Date && isNaN(lastOutTime))) {
+                    row.amWorkingHours = 0;
+                    row.pmWorkingHours = 0;
+                }else{
+                    const amWorkingHours = Math.max(0, 
+                        (Math.min(lastOutTime, amEnd) - Math.max(firstInTime, amStart)) / 1000 / 60 / 60
+                    );
+
+                    const pmWorkingHours = Math.max(0, 
+                        (Math.min(lastOutTime, pmEnd) - Math.max(firstInTime, pmStart)) / 1000 / 60 / 60
+                    );
+
+                    row.amWorkingHours = amWorkingHours.toFixed(2);
+                    row.pmWorkingHours = pmWorkingHours.toFixed(2);
+
+                    console.log("amWorkingHours", amWorkingHours, "pmWorkingHours", pmWorkingHours);
+                }
+            } else {
+                row.amWorkingHours = 0;
+                row.pmWorkingHours = 0;
+            }
+            row.totalWorkingHours = (parseFloat(row.amWorkingHours) + parseFloat(row.pmWorkingHours)).toFixed(2);
+
+            // Calculate OT hours         
+            if ((firstInTime instanceof Date && isNaN(firstInTime)) || (lastOutTime instanceof Date && isNaN(lastOutTime))) {
+                row.otHours = 0;
+            }else{
+                if (!dayOff.includes(row.day)) {
+                    const otHours = Math.max(0, (lastOutTime - pmEnd) / 1000 / 60 / 60);
+                    row.otHours = otHours.toFixed(2);
+                } else {
+                    const otHours = Math.max(0, (lastOutTime - firstInTime) / 1000 / 60 / 60);                
+                    row.otHours = otHours.toFixed(2);
+                }
+            }
+
+            // Calculate Late Arrival
+            if (!dayOff.includes(row.day)) {
+                // Normal working day
+                if ((firstInTime instanceof Date && isNaN(firstInTime)) ||
+                    (lastOutTime instanceof Date && isNaN(lastOutTime))) {
+                    row.isLate = 'No';
+                    row.isEarlyLeave = 'No';
+                    return;
+                }
+
+                const isLate = firstInTime > amStart ? 'Yes' : 'No';
+                row.isLate = isLate;
+
+                const isEarlyLeave = lastOutTime < pmEnd ? 'Yes' : 'No';
+                row.isEarlyLeave = isEarlyLeave;
+            } else {
+                // Day off
+                row.isLate = 'No';
+                row.isEarlyLeave = 'No';
+            }            
+            
 
             // Default 
             const newRow = document.createElement('tr');
@@ -248,13 +498,43 @@
 
             // Add "First In" cell to row
             const firstInCell = document.createElement('td');
-            firstInCell.textContent = "firstIn";
+            firstInCell.textContent = firstIn;
             newRow.insertBefore(firstInCell, newRow.children[4]);
             
             // Add "Last Out" cell to row
             const lastOutCell = document.createElement('td');
-            lastOutCell.textContent = "lastOut";
+            lastOutCell.textContent = lastOut;
             newRow.insertBefore(lastOutCell, newRow.children[5]);
+
+            // Add "AM Working Hours" cell to row
+            const amWorkingHoursCell = document.createElement('td');
+            amWorkingHoursCell.textContent = row.amWorkingHours;
+            newRow.insertBefore(amWorkingHoursCell, newRow.children[6]);
+
+            // Add "PM Working Hours" cell to row
+            const pmWorkingHoursCell = document.createElement('td');
+            pmWorkingHoursCell.textContent = row.pmWorkingHours;
+            newRow.insertBefore(pmWorkingHoursCell, newRow.children[7]);
+
+            // Add "Total Working Hours" cell to row
+            const totalWorkingHoursCell = document.createElement('td');
+            totalWorkingHoursCell.textContent = row.totalWorkingHours;
+            newRow.insertBefore(totalWorkingHoursCell, newRow.children[8]);
+
+            // Add "OT Hours" cell to row
+            const otHoursCell = document.createElement('td');
+            otHoursCell.textContent = row.otHours;
+            newRow.insertBefore(otHoursCell, newRow.children[9]);
+
+            // Add "Late Arrival" cell to row
+            const lateArrivalCell = document.createElement('td');
+            lateArrivalCell.textContent = row.isLate;
+            newRow.insertBefore(lateArrivalCell, newRow.children[10]);
+
+            // Add "Early Departure" cell to row
+            const earlyDepartureCell = document.createElement('td');
+            earlyDepartureCell.textContent = row.isEarlyLeave;
+            newRow.insertBefore(earlyDepartureCell, newRow.children[11]);
 
             processedDataBody.appendChild(newRow);
         });
@@ -268,29 +548,36 @@
         const endMorning = document.getElementById('morning-end').value;
         const startAfternoon = document.getElementById('afternoon-start').value;
         const endAfternoon = document.getElementById('afternoon-end').value;
+        
+        const dayOff = [];
+        if (document.getElementById('monday').checked) dayOff.push('Mon.');
+        if (document.getElementById('tuesday').checked) dayOff.push('Tue.');
+        if (document.getElementById('wednesday').checked) dayOff.push('Wed.');
+        if (document.getElementById('thursday').checked) dayOff.push('Thu.');
+        if (document.getElementById('friday').checked) dayOff.push('Fri.');
+        if (document.getElementById('saturday').checked) dayOff.push('Sat.');
+        if (document.getElementById('sunday').checked) dayOff.push('Sun.');
+        const customDay = document.getElementById('custom-day').value;
+        if (customDay) dayOff.push(customDay);
+        // console.log("start date", startDate, "end date", endDate, "start morning", startMorning, "end morning", endMorning, "start afternoon", startAfternoon, "end afternoon", endAfternoon, "day off", dayOff);
+
 
         if (!startDate || !endDate || !startMorning || !endMorning || !startAfternoon || !endAfternoon) {
             alert('Please fill all the fields for processing!');
             return;
         }
 
-        // Example processed data (Replace with actual processing logic)
-        // const processedData = [
-        //     { id: 2, name: 'Tran Quoc Vinh Quang', date: '22/11/2024', check1: '09:00', check2: '09:00', check3: '09:00', check4: '09:00', check5: '09:00', check6: '', status: 'On Time', totalHours: '8:00' },
-        //     { id: 2, name: 'Tran Minh Nhat', date: '23/11/2024', check1: '09:15', check2: '12:05', check3: '13:10', check4: '18:00', check5: '', check6: '', status: 'Late', totalHours: '8:35' },
-        // ];
-
-        const processedData = rawData.map(row => {
+        processedData = rawData.map(row => {
             return { ...row};
         });
-        processData(processedData);
+        processData(processedData, startDate, endDate, startMorning, endMorning, startAfternoon, endAfternoon, dayOff);
 
         // Populate processed data table
         const processedTableBody = document.getElementById('processed-data-body');
         processedTableBody.innerHTML = '';
-        processedData.forEach(row => {
+        filteredData.forEach(row => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${row.id}</td><td>${row.name}</td><td>${row.date}</td><td>${row.day}</td><td>${row.firstIn}</td><td>${row.lastOut}</td>`;
+            tr.innerHTML = `<td>${row.id}</td><td>${row.name}</td><td>${row.date}</td><td>${row.day}</td><td>${row.firstIn}</td><td>${row.lastOut}</td><td>${row.amWorkingHours}</td><td>${row.pmWorkingHours}</td><td>${row.totalWorkingHours}</td><td>${row.otHours}</td><td>${row.isLate}</td><td>${row.isEarlyLeave}</td>`;
             processedTableBody.appendChild(tr);
         });
 

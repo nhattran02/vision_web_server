@@ -18,7 +18,8 @@ class User(db.Model, UserMixin):
     notes = db.relationship('Note')
 
 class Attendance(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    _id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.String(5), nullable=False)
     name = db.Column(db.String(150), nullable=False)
     date = db.Column(db.String(12), nullable=False)
     check1 = db.Column(db.String(10))
